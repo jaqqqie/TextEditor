@@ -9,17 +9,25 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import static javafx.application.Application.launch;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
-import javafx.geometry.Orientation;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.DialogPane;
+import javafx.scene.control.ListView;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.Separator;
 import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
 import javafx.scene.control.ToolBar;
 import javafx.scene.control.Tooltip;
 import javafx.scene.effect.DropShadow;
@@ -30,9 +38,15 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
+import javafx.util.Pair;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
+import javafx.scene.text.Font;
 
 public class Java_TextEditor extends Application {
     private int width = 600;
@@ -46,17 +60,20 @@ public class Java_TextEditor extends Application {
     File file;
     Clipboard clipboard = Clipboard.getSystemClipboard();
     ClipboardContent content = new ClipboardContent();
+    ListView<String> list_of_fonts = new ListView<String>();
+    ListView<String> list_of_styles = new ListView<String>();
+    ListView<Double> list_of_sizes = new ListView<Double>();
     @Override
     public void start(Stage primaryStage) {
         this.primaryStage = primaryStage;
         MenuBar menuBar = createMenus();
-        root.setTop(menuBar);
-        root.setCenter(textArea);
-        createScene();
-       
         ToolBar toolBar = createToolBar();
-        
-        root.setLeft(toolBar);
+        createScene();
+        VBox vBox = new VBox();
+        vBox.getChildren().add(menuBar);
+        vBox.getChildren().add(toolBar);
+        root.setTop(vBox);
+        root.setCenter(textArea);
         primaryStage.setTitle("Text Editor");
         primaryStage.setScene(scene);
         primaryStage.show();
@@ -70,6 +87,7 @@ public class Java_TextEditor extends Application {
         });
     }
     
+    //creates a toolbar with icons for common operations
     public ToolBar createToolBar(){
         //creates buttons for toolbar
         Button cutButton = createCutButton();
@@ -80,12 +98,12 @@ public class Java_TextEditor extends Application {
 
         ToolBar toolBar = new ToolBar(cutButton, copyButton, new Separator(),
                 pasteButton, saveButton, openButton);
-        toolBar.setOrientation(Orientation.VERTICAL);
         return toolBar;
     }
     public Button createCutButton(){
         Button button = new Button();
-        Image cut_icon = new Image(getClass().getResourceAsStream("cut.png"));
+        Image cut_icon = new Image(getClass().getResourceAsStream("cut.png"), 
+            20, 20, true, true);
         button.setGraphic(new ImageView(cut_icon));
         button.setTooltip(new Tooltip("Cut"));
         DropShadow shadow = new DropShadow();
@@ -114,7 +132,8 @@ public class Java_TextEditor extends Application {
     }
     public Button createCopyButton(){
         Button button = new Button();
-        Image copy_icon = new Image(getClass().getResourceAsStream("copy.png"));
+        Image copy_icon = new Image(getClass().getResourceAsStream("copy.png"), 
+            20, 20, true, true);
         button.setGraphic(new ImageView(copy_icon));
         button.setTooltip(new Tooltip("Copy"));
         DropShadow shadow = new DropShadow();
@@ -145,7 +164,8 @@ public class Java_TextEditor extends Application {
     }
     public Button createPasteButton(){
         Button button = new Button();
-        Image paste_icon = new Image(getClass().getResourceAsStream("paste.png"));
+        Image paste_icon = new Image(getClass().getResourceAsStream("paste.png"), 
+            20, 20, true, true);
         button.setGraphic(new ImageView(paste_icon));
         button.setTooltip(new Tooltip("Paste"));
         DropShadow shadow = new DropShadow();
@@ -173,7 +193,8 @@ public class Java_TextEditor extends Application {
     }
     public Button createSaveButton(){
         Button button = new Button();
-        Image save_icon = new Image(getClass().getResourceAsStream("save.png"));
+        Image save_icon = new Image(getClass().getResourceAsStream("save.png"), 
+            20, 20, true, true);
         button.setGraphic(new ImageView(save_icon));
         button.setTooltip(new Tooltip("Save"));
         DropShadow shadow = new DropShadow();
@@ -210,7 +231,8 @@ public class Java_TextEditor extends Application {
     }
     public Button createOpenButton(){
         Button button = new Button();
-        Image open_icon = new Image(getClass().getResourceAsStream("open.png"));
+        Image open_icon = new Image(getClass().getResourceAsStream("open.png"), 
+            20, 20, true, true);
         button.setGraphic(new ImageView(open_icon));
         button.setTooltip(new Tooltip("Open"));
         DropShadow shadow = new DropShadow();
@@ -373,8 +395,177 @@ public class Java_TextEditor extends Application {
         Menu menuFormat = new Menu("_Format");
         MenuItem wordWrapItem = new MenuItem("_Word Wrap");
         MenuItem fontItem = new MenuItem("_Font...");
+        fontItem.setOnAction(new EventHandler<ActionEvent>(){
+            @Override
+            public void handle(ActionEvent event){
+                fontPane();
+            }
+        });
         menuFormat.getItems().addAll(wordWrapItem, fontItem);
         return menuFormat;
+    }
+ 
+    public void fontPane(){
+        DialogPane dip = new DialogPane();
+        Dialog<Pair<String, String>> dialog = new Dialog();
+        Stage stage = (Stage) dialog.getDialogPane().getScene().getWindow();
+        dialog.setTitle("Font");
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(5);
+        TextArea sample = new TextArea("AaBbYyZz");
+        sample.setEditable(false);
+        dip.getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        dialog.setDialogPane(dip);
+        dialog.getDialogPane().setContent(grid);
+        
+        //gets list of available fonts
+        ObservableList<String> fonts = FXCollections.observableArrayList (
+            javafx.scene.text.Font.getFamilies());
+        //gets list of font styles
+        ObservableList<String> fontStyle = FXCollections.observableArrayList (
+            javafx.scene.text.Font.getFontNames(textArea.getFont().getFamily()));
+        //gets list of sizes
+        ObservableList<Double> size = getFontSizes();
+        
+        list_of_sizes = new ListView<Double>(size);
+        
+        list_of_fonts.setItems(fonts);
+        list_of_styles.setItems(fontStyle);
+        
+        list_of_fonts.getSelectionModel().select(fonts.indexOf(textArea.getFont().getFamily()));
+        list_of_fonts.scrollTo(fonts.indexOf(textArea.getFont().getFamily()));
+        
+        list_of_styles.getSelectionModel().select(fontStyle.indexOf(textArea.getFont().getName()));
+        list_of_styles.scrollTo(fontStyle.indexOf(textArea.getFont().getName()));
+
+        list_of_sizes.getSelectionModel().select(size.indexOf(textArea.getFont().getSize()));
+        list_of_sizes.scrollTo(size.indexOf(textArea.getFont().getSize()));
+        
+        //gets list of font styles form selected font
+        list_of_fonts.getSelectionModel().selectedItemProperty().addListener(
+            new ChangeListener<String>() {
+                @Override
+                public void changed(ObservableValue<? extends String> ov, 
+                    String old_val, String new_val) {
+                        ObservableList<String> fontStyle = FXCollections.observableArrayList (
+                             javafx.scene.text.Font.getFontNames(new_val)); 
+                        list_of_styles.setItems(fontStyle);
+                        list_of_styles.getSelectionModel().select(fontStyle.get(0));
+                        Font new_font = new Font(list_of_styles.getSelectionModel().getSelectedItem(),
+                            list_of_sizes.getSelectionModel().getSelectedItem());
+                        sample.setFont(new_font);
+                        stage.show();
+                }
+        });
+
+        dialog.setResultConverter((ButtonType button) -> {
+            if (button == ButtonType.OK) {
+                Font new_font = new Font(list_of_styles.getSelectionModel().getSelectedItem(),
+                        list_of_sizes.getSelectionModel().getSelectedItem());
+                sample.setFont(new_font);
+                textArea.setFont(new_font);
+            }
+            return null;
+        });
+        //adds search bars for font, style, size to gridpane
+        addSearchBars(grid, fonts, fontStyle, size);
+        grid.add(list_of_fonts, 0, 1);
+        grid.add(list_of_styles, 1, 1);
+        grid.add(list_of_sizes, 2, 1);
+        grid.add(sample, 2, 2);
+        dialog.showAndWait();
+    }
+    private void addSearchBars(GridPane grid, ObservableList<String> fonts, 
+            ObservableList<String> styles, ObservableList<Double> sizes){
+        TextField search_fonts = getSearchFontBar(fonts);
+        TextField search_styles = getSearchStyleBar(styles);
+        TextField search_sizes = getSearchSizeBar(sizes);
+        grid.add(search_fonts, 0, 0);
+        grid.add(search_styles, 1, 0);
+        grid.add(search_sizes, 2, 0);
+    }
+    private TextField getSearchFontBar(ObservableList<String> fonts){
+        TextField search_fonts = new TextField();
+        search_fonts.textProperty().addListener(
+            new ChangeListener<String>() {
+                @Override
+                public void changed(ObservableValue<? extends String> ov, 
+                    String old_val, String new_val) {
+                    boolean stop = false;
+                    for(int i = 0; i < fonts.size();i++){
+                        if(fonts.get(i).toLowerCase().contains(new_val)){
+                            for(int j = 0; j < new_val.length(); j++){
+                                if(fonts.get(i).toLowerCase().charAt(j) == new_val.charAt(j)){
+                                    list_of_fonts.getSelectionModel().select(i);
+                                    list_of_fonts.getFocusModel().focus(i);
+                                    list_of_fonts.scrollTo(i);
+                                    stop = true;
+                                }
+                                break;
+                            }
+                            if(stop){break;}
+                        }
+                    }    
+
+                }
+        });
+        return search_fonts;
+    }
+    private TextField getSearchStyleBar(ObservableList<String> styles){
+        TextField search_styles = new TextField();
+        search_styles.textProperty().addListener(
+            new ChangeListener<String>() {
+                @Override
+                public void changed(ObservableValue<? extends String> ov, 
+                    String old_val, String new_val) {
+                    boolean stop = false;
+                    for(int i = 0; i < styles.size();i++){
+                        if(styles.get(i).toLowerCase().contains(new_val)){
+                            for(int j = 0; j < new_val.length(); j++){
+                                if(styles.get(i).toLowerCase().charAt(j) == new_val.charAt(j)){
+                                    list_of_styles.getSelectionModel().select(i);
+                                    list_of_styles.getFocusModel().focus(i);
+                                    list_of_styles.scrollTo(i);
+                                    stop = true;
+                                }
+                                break;
+                            }
+                            if(stop){break;}
+                        }
+                    }    
+
+                }
+        });
+        return search_styles;
+    }
+    private TextField getSearchSizeBar(ObservableList<Double> sizes){
+        TextField search_sizes = new TextField();
+        search_sizes.textProperty().addListener(
+            new ChangeListener<String>() {
+                @Override
+                public void changed(ObservableValue<? extends String> ov, 
+                    String old_val, String new_val) {
+                    try{
+                        double entry = Double.parseDouble(new_val);
+                        list_of_sizes.getSelectionModel().select(sizes.indexOf(entry));
+                        list_of_sizes.getFocusModel().focus(sizes.indexOf(entry));
+                        list_of_sizes.scrollTo(sizes.indexOf(entry));
+                    }catch(NumberFormatException e){
+                        System.out.println(e);
+                    }
+
+                }
+        });
+        return search_sizes;
+    }
+    private ObservableList getFontSizes(){
+        List<Double> list = new ArrayList();
+        for(double i = 1; i < 420; i++){
+            list.add(i);
+        }
+        ObservableList<Double> size = (FXCollections.observableArrayList(list));
+        return size;
     }
     public Menu createViewMenu(){
         Menu menuView = new Menu("_View");
