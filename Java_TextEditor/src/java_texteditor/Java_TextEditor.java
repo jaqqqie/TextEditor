@@ -1,7 +1,5 @@
 package java_texteditor;
 
-import javafx.application.Application;
-import javafx.event.EventHandler;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.io.BufferedReader;
@@ -9,17 +7,29 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.Format;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.application.Application;
 import static javafx.application.Application.launch;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
+import javafx.geometry.Orientation;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
+import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
@@ -39,45 +49,51 @@ import javafx.scene.input.KeyCombination;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Font;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
+import javafx.util.Duration;
 import javafx.util.Pair;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
-import javafx.scene.text.Font;
 
 public class Java_TextEditor extends Application {
     private int width = 600;
     private int height = 500;
     private String text = "Type here....";
+    private String fileName = "null";
     public static Settings settings;
     TextArea textArea = new TextArea();
     Scene scene;
     Stage primaryStage;
     BorderPane root = new BorderPane();
     File file;
+    Label datetime;
+    Label name;
     Clipboard clipboard = Clipboard.getSystemClipboard();
     ClipboardContent content = new ClipboardContent();
     ListView<String> list_of_fonts = new ListView<String>();
     ListView<String> list_of_styles = new ListView<String>();
     ListView<Double> list_of_sizes = new ListView<Double>();
+    
     @Override
     public void start(Stage primaryStage) {
         this.primaryStage = primaryStage;
         MenuBar menuBar = createMenus();
         ToolBar toolBar = createToolBar();
+        HBox statusBar = getStatusBar();
         createScene();
         VBox vBox = new VBox();
         vBox.getChildren().add(menuBar);
         vBox.getChildren().add(toolBar);
+        root.setBottom(statusBar);
         root.setTop(vBox);
         root.setCenter(textArea);
+        
         primaryStage.setTitle("Text Editor");
         primaryStage.setScene(scene);
         primaryStage.show();
-        
         //handles when the editor window is closed
         primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>(){
             @Override
@@ -86,7 +102,55 @@ public class Java_TextEditor extends Application {
             }
         });
     }
-    
+    private HBox getStatusBar(){
+        HBox statusBar = new HBox();
+        Label caretPosition = getCaretPosition();
+        datetime = new Label();
+        name = new Label(fileName);
+        initClock();
+        statusBar.getChildren().addAll(name, new Separator(), datetime, 
+                new Separator(), caretPosition);
+        return statusBar;
+    }
+    private Label getCaretPosition(){
+        Label caretPosition = new Label();
+        textArea.caretPositionProperty().addListener((param1, param2, param3)->{
+            String s = textArea.getText().toString();
+            String[] arr = s.split("\\n", -1);
+            int caret = textArea.getCaretPosition();
+            int count = 0, row = 0, col = 0, temp = 0;
+            //finds the row that the user is on
+            if(param2 != param3){
+                for(int i = 0; i < arr.length; i++){
+                    count += arr[i].length();
+                    if(caret <= count){
+                        temp = count - caret;
+                        col = arr[i].length() - temp;
+                    }
+                    if(caret <= count){
+                        row = i + 1;
+                        break;
+                    }
+                    count++;
+                }
+            }
+            caretPosition.setText(row + ":" + col);
+        });
+        return caretPosition;
+    }
+    public void initClock() {
+        Timeline timeline = new Timeline(new KeyFrame(
+        Duration.millis(1000),
+            ae -> setDateTime()));
+        timeline.setCycleCount( Animation.INDEFINITE );
+        timeline.play();
+    }
+    //Sets the text for the dateTime Label
+    public void setDateTime(){
+          Format formatter = new SimpleDateFormat("HH:mm:ss");
+          Date date = new Date();
+          datetime.setText(formatter.format(date));
+    }
     //creates a toolbar with icons for common operations
     public ToolBar createToolBar(){
         //creates buttons for toolbar
@@ -635,16 +699,18 @@ public class Java_TextEditor extends Application {
         } 
     }
     public void openFile(File file) {
-       Gson gson = new Gson();
-       try(FileReader fr = new FileReader(file)){
-           BufferedReader br = new BufferedReader(fr);
-           settings = gson.fromJson(br.readLine(), Settings.class);
-           textArea.setText(settings.getText());
-           primaryStage.setHeight(settings.getHeight());
-           primaryStage.setWidth(settings.getWidth());
-       }catch(IOException e){
-           System.out.println(e);
-       }
+        Gson gson = new Gson();
+        try(FileReader fr = new FileReader(file)){
+            fileName = file.getName();
+            name.setText(fileName);
+            BufferedReader br = new BufferedReader(fr);
+            settings = gson.fromJson(br.readLine(), Settings.class);
+            textArea.setText(settings.getText());
+            primaryStage.setHeight(settings.getHeight());
+            primaryStage.setWidth(settings.getWidth());
+        }catch(IOException e){
+            System.out.println(e);
+        }
     }
     public void copy(String selectedText){
         content.putString(selectedText);
@@ -692,8 +758,8 @@ public class Java_TextEditor extends Application {
         textArea.replaceSelection("");
         copy(selectedText);
     }
+    
     public static void main(String[] args) {
         launch(args);
     }
 }
-
